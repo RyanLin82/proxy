@@ -1,8 +1,9 @@
 package forex.services.rates
 
-import cats.Applicative
-import interpreters._
+import cats.effect.Async
+import forex.services.rates.interpreters._
+import org.http4s.client.Client
 
 object Interpreters {
-  def dummy[F[_]: Applicative]: Algebra[F] = new OneFrameDummy[F]()
+  def dummy[F[_]: Async](client: Client[F]): Algebra[F] = new OneFrameForex[F](client)
 }
