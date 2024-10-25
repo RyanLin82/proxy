@@ -7,17 +7,17 @@ import forex.http.rates.RatesHttpRoutes
 import forex.programs._
 import forex.server.auth.TokenAuth
 import forex.services._
+import forex.services.rates.cache.CacheService
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.implicits._
 import org.http4s.server.AuthMiddleware
 import org.http4s.server.middleware.{AutoSlash, Timeout}
 
-class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]) {
+class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F], cacheService: CacheService[F]) {
 
   private val ratesService: RatesService[F] = RatesServices.dummy[F](client)
-
-  private val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService)
+  val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService, cacheService)
 
   private val ratesHttpRoutes: HttpRoutes[F] = new RatesHttpRoutes[F](ratesProgram).routes
 

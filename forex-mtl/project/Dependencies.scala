@@ -37,6 +37,8 @@ object Dependencies {
     lazy val circeParser = circe("circe-parser")
     lazy val pureConfig = "com.github.pureconfig" %% "pureconfig" % Versions.pureConfig
     lazy val scalaLog = "com.typesafe.scala-logging" %% "scala-logging" % Versions.scalaLog
+    lazy val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.9.3"
+    lazy val cron = "com.github.alonsodomin.cron4s" %% "cron4s-core" % "0.7.0"
 
 
     // Compiler plugins

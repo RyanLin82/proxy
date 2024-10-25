@@ -133,6 +133,22 @@ class OneFrameForex[F[_]: Async](client: Client[F], oneFrameForexConfig: OneFram
   }
 }
 
+object OneFrameForex {
+  /**
+   * Creates an instance of `OneFrameForex` using the provided HTTP client and optional configuration.
+   *
+   * @param client The HTTP client to be used for making requests.
+   * @param config The optional configuration. If not provided, a default configuration will be used.
+   * @tparam F The effect type (e.g., IO).
+   * @return An instance of `OneFrameForex[F]`.
+   */
+  def apply[F[_]: Async](client: Client[F], config: OneFrameForexConfig = OneFrameForexConfig()): OneFrameForex[F] = {
+    new OneFrameForex(client, config)
+  }
+}
+
+
+
 
 
 

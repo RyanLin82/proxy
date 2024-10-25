@@ -58,6 +58,8 @@ libraryDependencies ++= Seq(
   Libraries.http4sServer,
   Libraries.http4sClient,
   Libraries.scalaLog,
+  Libraries.cron,
+  Libraries.caffeine,
   Libraries.http4sCirce,
   Libraries.circeCore,
   Libraries.circeGeneric,

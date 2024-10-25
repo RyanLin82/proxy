@@ -4,5 +4,7 @@ import forex.domain.Rate
 import errors._
 
 trait Algebra[F[_]] {
-  def getRate(request: Protocol.GetRatesRequest): F[Error Either Rate]
+  def getRatePair(request: Protocol.GetRatesRequest): F[Error Either Rate]
+
+  def updateRatesCache(): F[Unit]
 }

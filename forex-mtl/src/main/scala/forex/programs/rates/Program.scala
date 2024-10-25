@@ -1,23 +1,50 @@
 package forex.programs.rates
 
-import cats.Functor
 import cats.data.EitherT
-import errors._
+import cats.effect.Sync
+import cats.implicits._
+import com.typesafe.scalalogging.LazyLogging
+import forex.domain.Rate.Pair
 import forex.domain._
+import forex.programs.rates.errors._
 import forex.services.RatesService
+import forex.services.rates.cache.CacheService
 
-class Program[F[_]: Functor](
-    ratesService: RatesService[F]
-) extends Algebra[F] {
+class Program[F[_]: Sync](
+    ratesService: RatesService[F],
+    cacheService: CacheService[F]
+) extends Algebra[F] with LazyLogging {
 
-  override def getRate(request: Protocol.GetRatesRequest): F[Error Either Rate] =
-    EitherT(ratesService.rateLookup(Rate.Pair(request.from, request.to))).leftMap(toProgramError(_)).value
+  override def getRatePair(request: Protocol.GetRatesRequest): F[Error Either Rate] = {
+    val pair = Pair(request.from, request.to)
+
+    if (request.from == request.to) {
+      Sync[F].pure(Rate(pair, forex.domain.Price(BigDecimal(1)), forex.domain.Timestamp.now).asRight[Error])
+    } else {
+      cacheService.getRateFromCache(pair).flatMap {
+        case Some(rate) =>
+          rate.asRight[Error].pure[F]
+        case None =>
+          EitherT(ratesService.rateLookup(pair)).leftMap(toProgramError).value
+      }
+    }
+  }
+
+  override def updateRatesCache(): F[Unit] = {
+    ratesService.allSupportedCurrenciesRateLookup().flatMap {
+      case Right(rates) =>
+        cacheService.storeInRatesCache(rates)
+      case Left(error) =>
+        Sync[F].delay(logger.error(s"Failed to fetch rates: $error"))
+    }
+  }
 }
 
 object Program {
 
-  def apply[F[_]: Functor](
-      ratesService: RatesService[F]
-  ): Algebra[F] = new Program[F](ratesService)
-
+  def apply[F[_]: Sync](
+      ratesService: RatesService[F],
+      cacheService: CacheService[F]
+  ): Algebra[F] = new Program[F](ratesService, cacheService)
 }
+
