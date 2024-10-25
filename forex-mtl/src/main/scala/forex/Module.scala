@@ -6,6 +6,7 @@ import forex.config.ApplicationConfig
 import forex.http.rates.RatesHttpRoutes
 import forex.programs._
 import forex.server.auth.TokenAuth
+import forex.server.exceptionHandle.ErrorHandler
 import forex.services._
 import forex.services.rates.cache.CacheService
 import org.http4s._
@@ -42,6 +43,6 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
     }
   }
 
-  val httpApp: HttpApp[F] = appMiddleware(routesMiddleware(secureRoutes).orNotFound)
+  val httpApp: HttpApp[F] = appMiddleware(ErrorHandler[F](routesMiddleware(secureRoutes).orNotFound))
 
 }

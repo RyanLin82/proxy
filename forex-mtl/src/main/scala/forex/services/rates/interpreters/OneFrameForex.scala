@@ -1,19 +1,22 @@
 package forex.services.rates.interpreters
 
-import cats.effect.Async
-import cats.implicits.{catsSyntaxApplicativeError, toFunctorOps}
-import cats.syntax.either._
+import cats.effect.{Async, Sync}
+import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import forex.domain.{Currency, Price, Rate, Timestamp}
 import forex.services.rates.Algebra
 import forex.services.rates.errors._
-import forex.services.rates.interpreters.Protocol.ExternalRate
+import forex.services.rates.interpreters.Protocol.{ErrorResponse, ExternalRate}
+import io.circe.Json
+import io.circe.generic.extras.decoding.ReprDecoder.deriveReprDecoder
+import io.circe.parser.decode
 import org.http4s._
 import org.http4s.circe._
-import org.http4s.client.Client
+import org.http4s.client.{Client, UnexpectedStatus}
 import org.typelevel.ci.CIString
 
 import java.time.OffsetDateTime
+
 
 class OneFrameForex[F[_]: Async](client: Client[F], oneFrameForexConfig: OneFrameForexConfig = OneFrameForexConfig()) extends Algebra[F] with LazyLogging {
 
@@ -37,25 +40,45 @@ class OneFrameForex[F[_]: Async](client: Client[F], oneFrameForexConfig: OneFram
       headers = Headers(Header.Raw(CIString("token"), token))
     )
 
-    // Log the request being sent
     logger.info(s"Sending rate lookup request for pair: ${pair.from}${pair.to} with URI: $requestUri")
 
-    // Execute the HTTP request asynchronously and expect a List of ExternalRate
-    client.expect[List[ExternalRate]](request).attempt.map {
-      case Right(responseList) if responseList.nonEmpty =>
-        val rate = parseExternalRateToRate(responseList.head)
-        logger.info(s"Successfully fetched rate: $rate")
-        rate.asRight[Error]
+    val fetchRates = client.expect[Json](request).attempt.map {
+      case Right(json) =>
+        decode[List[ExternalRate]](json.noSpaces) match {
+          case Right(responseList) if responseList.nonEmpty =>
+            val rate = parseExternalRateToRate(responseList.head)
+            logger.info(s"Successfully fetched rate: $rate")
+            rate.asRight[Error]
 
-      case Right(_) =>
-        // Handle case where the response list is empty
-        logger.warn("Received empty response list for rate lookup.")
-        Error.OneFrameLookupFailed("Empty response list").asLeft[Rate]
+          case Right(_) =>
+            logger.warn("Received empty response list for rate lookup.")
+            Error.OneFrameLookupFailed(500, "Empty response list").asLeft[Rate]
+
+          case Left(_) =>
+            decode[ErrorResponse](json.noSpaces) match {
+              case Right(errorResponse) =>
+                logger.error(s"External service error: ${errorResponse.error}")
+                Error.OneFrameLookupFailed(500, "External One Frame API encountered an issue").asLeft[Rate]
+
+              case Left(_) =>
+                logger.error(s"Unexpected response format: $json")
+                Error.OneFrameLookupFailed(500, "Unexpected response format from One Frame service").asLeft[Rate]
+            }
+        }
+
+      case Left(error: UnexpectedStatus) =>
+        logger.error(s"Unexpected HTTP status: ${error.status.code} - ${error.getMessage}", error)
+        Error.OneFrameLookupFailed(error.status.code, "Unexpected failure from One Frame service").asLeft[Rate]
 
       case Left(error) =>
         logger.error(s"Error during rate lookup: ${error.getMessage}", error)
-        Error.OneFrameLookupFailed(error.getMessage).asLeft[Rate]
+        Error.OneFrameLookupFailed(500, "Unexpected failure from one frame service").asLeft[Rate]
     }
+    fetchRates.handleErrorWith { error =>
+      logger.error(s"Unexpected failure to fetch currency pairs: ${error.getMessage}", error)
+      Sync[F].pure(Error.OneFrameLookupFailed(503, "Unexpected failure from one frame service").asLeft[Rate])
+    }
+
   }
 
   /**
@@ -74,19 +97,37 @@ class OneFrameForex[F[_]: Async](client: Client[F], oneFrameForexConfig: OneFram
 
     logger.info(s"Sending request to fetch all supported currency pairs with URI: $requestUri")
 
-    client.expect[List[ExternalRate]](request).attempt.map {
-      case Right(responseList) if responseList.nonEmpty =>
-        val result = responseList.map {response => parseExternalRateToRate(response)}
-        logger.info(s"Successfully fetched ${result.size} rates.")
-        result.asRight[Error]
+    val fetchRates = client.expect[Json](request).attempt.map {
+      case Right(json) =>
+        decode[List[ExternalRate]](json.noSpaces) match {
+          case Right(responseList) if responseList.nonEmpty =>
+            val result = responseList.map {response => parseExternalRateToRate(response)}
+            logger.info(s"Successfully fetched ${result.size} rates.")
+            result.asRight[Error]
 
-      case Right(_) =>
-        logger.warn("Received empty response list when fetching all currency pairs.")
-        Error.OneFrameLookupFailed("Empty response list").asLeft[List[Rate]]
+          case Right(_) =>
+            logger.warn("Received empty response list for rate lookup.")
+            Error.OneFrameLookupFailed(500, "Empty response list").asLeft[List[Rate]]
 
+          case Left(_) =>
+            decode[ErrorResponse](json.noSpaces) match {
+              case Right(errorResponse) =>
+                logger.error(s"External service error: ${errorResponse.error}")
+                Error.OneFrameLookupFailed(500, "External One Frame API encountered an issue").asLeft[List[Rate]]
+
+              case Left(_) =>
+                logger.error(s"Unexpected response format: $json")
+                Error.OneFrameLookupFailed(500, "Unexpected response format from One Frame service").asLeft[List[Rate]]
+            }
+        }
       case Left(error) =>
-        logger.error(s"Error fetching all supported currency pairs: ${error.getMessage}", error)
-        Error.OneFrameLookupFailed(error.getMessage).asLeft[List[Rate]]
+        logger.error(s"Unexpected failure to fetch all supported currency pairs", error)
+        Error.OneFrameLookupFailed(500, "Unexpected failure from one frame service").asLeft[List[Rate]]
+    }
+
+    fetchRates.handleErrorWith { error =>
+      logger.error(s"Unexpected failure to fetch all supported currency pairs", error)
+      Sync[F].pure(Error.OneFrameLookupFailed(503, "Unexpected failure from one frame service").asLeft[List[Rate]])
     }
   }
 
