@@ -49,6 +49,8 @@ scalacOptions ++= Seq(
 resolvers +=
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
+assembly := (assembly dependsOn dependencyUpdates).value
+
 libraryDependencies ++= Seq(
   compilerPlugin(Libraries.kindProjector),
   Libraries.cats,

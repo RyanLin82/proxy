@@ -16,6 +16,9 @@ object Dependencies {
     val scalaCheck = "1.15.3"
     val scalaTest = "3.2.7"
     val catsScalaCheck = "0.3.2"
+    val mockito = "0.3.2"
+    val caffeine = "2.9.3"
+    val cronJob = "0.7.0"
   }
 
   object Libraries {
@@ -37,8 +40,8 @@ object Dependencies {
     lazy val circeParser = circe("circe-parser")
     lazy val pureConfig = "com.github.pureconfig" %% "pureconfig" % Versions.pureConfig
     lazy val scalaLog = "com.typesafe.scala-logging" %% "scala-logging" % Versions.scalaLog
-    lazy val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.9.3"
-    lazy val cron = "com.github.alonsodomin.cron4s" %% "cron4s-core" % "0.7.0"
+    lazy val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % Versions.caffeine
+    lazy val cron = "com.github.alonsodomin.cron4s" %% "cron4s-core" % Versions.cronJob
 
 
     // Compiler plugins
@@ -51,7 +54,6 @@ object Dependencies {
     lazy val scalaTest = "org.scalatest" %% "scalatest" % Versions.scalaTest
     lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % Versions.scalaCheck
     lazy val catsScalaCheck = "io.chrisdavenport" %% "cats-scalacheck" % Versions.catsScalaCheck
-    lazy val mockito =  "org.mockito" %% "mockito-scala" % "1.17.31"
+    lazy val mockito =  "org.mockito" %% "mockito-scala" % Versions.mockito
   }
-
 }
