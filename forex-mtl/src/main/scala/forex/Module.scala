@@ -2,6 +2,7 @@ package forex
 
 import cats.data.Kleisli
 import cats.effect.{Concurrent, Timer}
+import com.typesafe.scalalogging.LazyLogging
 import forex.config.ApplicationConfig
 import forex.http.rates.RatesHttpRoutes
 import forex.programs._
@@ -13,9 +14,9 @@ import org.http4s._
 import org.http4s.client.Client
 import org.http4s.implicits._
 import org.http4s.server.AuthMiddleware
-import org.http4s.server.middleware.{AutoSlash, Timeout}
+import org.http4s.server.middleware.{AutoSlash, Logger, Timeout}
 
-class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F], cacheService: CacheService[F]) {
+class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F], cacheService: CacheService[F]) extends LazyLogging  {
 
   private val ratesService: RatesService[F] = RatesServices.oneFrameInterpreter[F](client)
   val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService, cacheService)
@@ -31,6 +32,16 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
     }
   }
 
+  private def logRoute(routes: HttpRoutes[F]): HttpRoutes[F] = {
+    Logger.httpRoutes(
+      logHeaders = true,
+      logBody = true,
+      redactHeadersWhen = header =>
+        header.toString.equalsIgnoreCase("Authorization")
+    )(routes)
+  }
+
+
   private val appMiddleware: TotalMiddleware = { http: HttpApp[F] =>
     Timeout(config.http.timeout)(http)
   }
@@ -43,5 +54,7 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
     }
   }
 
-  val httpApp: HttpApp[F] = appMiddleware(ErrorHandler[F](routesMiddleware(secureRoutes).orNotFound))
+  private val logRouteMiddleware: HttpRoutes[F] = logRoute(secureRoutes)
+
+  val httpApp: HttpApp[F] = appMiddleware(ErrorHandler[F](routesMiddleware(logRouteMiddleware).orNotFound))
 }
