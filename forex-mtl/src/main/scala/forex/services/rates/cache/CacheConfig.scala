@@ -9,11 +9,6 @@ class CacheConfig {
     val expireAfterWriteMinutes: Long = config.getConfig("rates-cache").getLong("expire-after-write-minutes")
     val maximumSize: Long = config.getConfig("rates-cache").getLong("maximum-size")
   }
-
-  object ResourceServerCache {
-    val expireAfterWriteDays: Long = config.getConfig("resource-server-cache").getLong("expire-after-write-days")
-    val maximumSize: Long = config.getConfig("resource-server-cache").getLong("maximum-size")
-  }
 }
 
 object CacheConfig {

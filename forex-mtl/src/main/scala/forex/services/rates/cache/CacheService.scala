@@ -15,17 +15,10 @@ import java.util.concurrent.TimeUnit
  */
 class CacheService[F[_]: Sync](cacheConfig: CacheConfig = CacheConfig()) extends LazyLogging {
 
-  // Cache for storing Forex rates, keyed by currency pair
   private val ratesCache: Cache[Pair, RateCacheValue] = Caffeine.newBuilder()
     .expireAfterWrite(cacheConfig.RatesCache.expireAfterWriteMinutes, TimeUnit.MINUTES)
     .maximumSize(cacheConfig.RatesCache.maximumSize)
     .build[Pair, RateCacheValue]()
-
-  // Cache for storing resource server statuses, keyed by server name
-  private val resourceServerCache: Cache[String, Boolean] = Caffeine.newBuilder()
-    .expireAfterWrite(cacheConfig.ResourceServerCache.expireAfterWriteDays, TimeUnit.DAYS)
-    .maximumSize(cacheConfig.ResourceServerCache.maximumSize)
-    .build[String, Boolean]()
 
   /**
    * Stores a list of Forex rates in the cache.
@@ -60,44 +53,6 @@ class CacheService[F[_]: Sync](cacheConfig: CacheConfig = CacheConfig()) extends
           logger.warn("Cache miss for pair: {} -> {}", pair.from, pair.to)
           None
       }
-    }
-  }
-
-  /**
-   * Stores the status of a resource server in the cache.
-   *
-   * @param serverName The name of the resource server.
-   * @return Effect that represents storing the status in the cache.
-   */
-  def storeResourceServerStatus(serverName: String): F[Unit] = {
-    Sync[F].delay {
-      resourceServerCache.put(serverName, true)
-      logger.info("Stored resource server status for: {}", serverName)
-    }
-  }
-
-  /**
-   * Retrieves the status of a resource server from the cache.
-   *
-   * @param serverName The name of the resource server.
-   * @return An effect wrapping an optional Boolean indicating the status of the server.
-   */
-  def getResourceServerStatus(serverName: String): F[Option[Boolean]] = {
-    Sync[F].delay {
-      Option(resourceServerCache.getIfPresent(serverName))
-    }
-  }
-
-  /**
-   * Evicts a specific entry from the resource server cache by the given key.
-   *
-   * @param key The key of the entry to be evicted.
-   * @return Effect that represents the eviction operation.
-   */
-  def evictResourceServerCache(key: String): F[Unit] = {
-    Sync[F].delay {
-      resourceServerCache.invalidate(key)
-      logger.info(s"Evicted cache entry for key: $key")
     }
   }
 }

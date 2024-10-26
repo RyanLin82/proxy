@@ -17,7 +17,7 @@ import org.http4s.server.middleware.{AutoSlash, Timeout}
 
 class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F], cacheService: CacheService[F]) {
 
-  private val ratesService: RatesService[F] = RatesServices.dummy[F](client)
+  private val ratesService: RatesService[F] = RatesServices.oneFrameInterpreter[F](client)
   val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService, cacheService)
 
   private val ratesHttpRoutes: HttpRoutes[F] = new RatesHttpRoutes[F](ratesProgram).routes
@@ -44,5 +44,4 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
   }
 
   val httpApp: HttpApp[F] = appMiddleware(ErrorHandler[F](routesMiddleware(secureRoutes).orNotFound))
-
 }

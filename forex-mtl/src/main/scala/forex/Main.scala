@@ -39,7 +39,7 @@ class Application[F[_]: ConcurrentEffect: Timer] extends LazyLogging{
     /**
      * Task to run once when the server starts.
      */
-    def runOnStartup(program: RatesProgram[F]): F[Unit] = {
+    private def runOnStartup(program: RatesProgram[F]): F[Unit] = {
       logger.info("Server is starting, running initialization task...")
       program.updateRatesCache()
     }

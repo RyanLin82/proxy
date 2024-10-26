@@ -19,12 +19,12 @@ object UpdateRatesCache extends LazyLogging {
   /**
    * Fetches exchange rates for all supported currency pairs.
    *
-   * @param client The HTTP client to use for fetching data.
+   * @param oneFrameForex The oneFrameForex to use for fetching data.
    * @return An effect that will fetch the rates and handle success/failure scenarios.
    */
-  private def scheduledTask[F[_]: ConcurrentEffect](client: Client[F], cacheService: CacheService[F]): F[Unit] = {
+  def scheduledTask[F[_]: ConcurrentEffect](oneFrameForex: OneFrameForex[F], cacheService: CacheService[F]): F[Unit] = {
     logger.info("Executing scheduled task...")
-      new OneFrameForex[F](client).allSupportedCurrenciesRateLookup().flatMap {
+    oneFrameForex.allSupportedCurrenciesRateLookup().flatMap {
         case Right(rates) =>
             cacheService.storeInRatesCache(rates)
         case Left(error) =>
@@ -33,16 +33,16 @@ object UpdateRatesCache extends LazyLogging {
   }
 
   /**
-   * Creates a cron job that runs the `scheduledTask` every 4.5 minutes.
+   * Creates a cron job that runs the `scheduledTask` every given minutes.
    *
    * @param client The HTTP client to use for fetching data.
    * @return A stream that runs the cron job periodically.
    */
   def cronJob[F[_]: ConcurrentEffect: Timer](client: Client[F], cacheService: CacheService[F]): Stream[F, Unit] = {
     logger.info("Starting cron job stream...")
-    Stream.awakeEvery[F](UpdateRatesCronJobConfig().cronTime.seconds).evalMap { _ =>
+    Stream.awakeEvery[F](UpdateRatesCronJobConfig().cronTime.minutes).evalMap { _ =>
       logger.info("Cron job triggered. Fetching and storing rates...")
-      scheduledTask(client, cacheService)
+      scheduledTask(OneFrameForex[F](client), cacheService)
     }
   }
 }

@@ -25,7 +25,14 @@ class Program[F[_]: Sync](
         case Some(rate) =>
           rate.asRight[Error].pure[F]
         case None =>
-          EitherT(ratesService.rateLookup(pair)).leftMap(toProgramError).value
+          ratesService.allSupportedCurrenciesRateLookup().flatMap {
+            case Right(rates) =>
+              cacheService.storeInRatesCache(rates).attempt.void
+            case Left(_) =>
+              ().pure[F]
+          }.flatMap { _ =>
+            EitherT(ratesService.rateLookup(pair)).leftMap(toProgramError).value
+          }
       }
     }
   }
@@ -41,7 +48,6 @@ class Program[F[_]: Sync](
 }
 
 object Program {
-
   def apply[F[_]: Sync](
       ratesService: RatesService[F],
       cacheService: CacheService[F]

@@ -12,11 +12,6 @@ object Protocol {
 
   implicit val configuration: Configuration = Configuration.default.withSnakeCaseMemberNames
 
-  final case class GetApiRequest(
-      from: Currency,
-      to: Currency
-  )
-
   final case class GetApiResponse(
       from: Currency,
       to: Currency,
