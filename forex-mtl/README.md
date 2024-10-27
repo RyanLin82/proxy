@@ -19,7 +19,8 @@ While additional features can be integrated, the design aims to remain simple to
 - **Parameters:** `{from}` and `{to}` must match the configured currency codes.
 - **Authorization:** Bearer token: valid-token
 - **Response:** Returns the exchange rate between the specified currencies.
-[!NOTE]
+
+[!NOTE] 
 Currently it only supports AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD.
 
 ### Refresh Cache
@@ -44,17 +45,21 @@ Currently it only supports AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD.
 {
     "status": 500,
     "errorCode": 500,
-    "message": "Unexpected failure from one frame service"
+    "message": "Given currency pair can't find the rate."
 }
 ```
-[!NOTE]
+
+[!Note] 
 Currently, all external server issue will return 500 with different message.
 
 
 ## Caching Mechanism
-The service uses **Caffeine** for caching to enhance performance.
+The service uses Caffeine for caching to enhance performance.
+- The cache entries expire every 4.5 minutes.
+- Upon server startup, the cache is populated, and a cron job refreshes it every 2 minutes.
+- Additionally, the cache can be refreshed manually via an API call.
 
-**Exchange Rate Cache:** This is updated when the cache miss and cron job will update it by given time.
+**Exchange Rate Cache:**
  - **Key:** Pair (`from: Currency`, `to: Currency`)
  - **Value:** `{ price: BigDecimal, timestamp: Timestamp }`
  - **Expiration:** Cache entries expire 4.5 minutes after they are written.
@@ -71,11 +76,12 @@ The service supports Bearer authorization: "valid-token"
 | Test Case                          | expected result                                | passed |
 |------------------------------------|------------------------------------------------|--------|
 | Get the currency pair USD, EUR     | hit the cache and return the rates             | v      |
-| Get the currency pair USD, USD     | return the rates which is one                  | v      |
-|Get the cureency pair USD, TWD | return 400 and Unknown currency: TWD | v      |
-| Get the currency if cache is miss  | generate cache miss log and return the rates   | v      |
+| Get the currency pair USD, USD     | return the rates which is 1                    | v      |
+|Get the cureency pair USD, TWD | return 400 and Unknown currency: TWD           | v      |
+| Get the currency if cache is miss  | return 500 with error message                  | v      |
 | Hit the api without the bearer token | return http code 401                           | v      |
 | Cron job updates the cache         | check the response timestamp will be different | v      |
+| Refresh cache api | The cache timestamp will be changed. | v |
 | Forex timeout                      | get the error response with the message        | v      |
 | Forex is down                      | get the error response with the message        | v      |
 

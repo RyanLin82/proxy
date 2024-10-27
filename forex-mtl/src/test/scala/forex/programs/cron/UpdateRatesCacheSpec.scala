@@ -1,8 +1,7 @@
-package programs.cron
+package forex.programs.cron
 
 import cats.effect.{ContextShift, IO, Timer}
 import forex.domain.{Currency, Price, Rate, Timestamp}
-import forex.programs.cron.UpdateRatesCache
 import forex.services.rates.cache.CacheService
 import forex.services.rates.interpreters.OneFrameForex
 import org.mockito.ArgumentMatchers.any

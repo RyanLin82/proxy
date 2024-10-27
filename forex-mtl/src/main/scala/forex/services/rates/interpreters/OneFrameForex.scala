@@ -12,7 +12,7 @@ import io.circe.generic.extras.decoding.ReprDecoder.deriveReprDecoder
 import io.circe.parser.decode
 import org.http4s._
 import org.http4s.circe._
-import org.http4s.client.{Client, UnexpectedStatus}
+import org.http4s.client.Client
 import org.typelevel.ci.CIString
 
 import java.time.OffsetDateTime
@@ -23,63 +23,6 @@ class OneFrameForex[F[_]: Async](client: Client[F], oneFrameForexConfig: OneFram
   private def baseUrl = oneFrameForexConfig.baseUrl
   private def token = oneFrameForexConfig.token
   implicit val externalRateListEntityDecoder: EntityDecoder[F, List[ExternalRate]] = jsonOf[F, List[ExternalRate]]
-
-  /**
-   * Looks up the exchange rate for a specific currency pair.
-   *
-   * @param pair The currency pair to look up.
-   * @return Either an error or the exchange rate.
-   */
-  override def rateLookup(pair: Rate.Pair): F[Error Either Rate] = {
-    val baseUri: Uri = Uri.unsafeFromString(baseUrl)
-    val requestUri = baseUri.withQueryParam("pair", s"${pair.from}${pair.to}")
-
-    val request = Request[F](
-      method = Method.GET,
-      uri = requestUri,
-      headers = Headers(Header.Raw(CIString("token"), token))
-    )
-
-    logger.info(s"Sending rate lookup request for pair: ${pair.from}${pair.to} with URI: $requestUri")
-
-    val fetchRates = client.expect[Json](request).attempt.map {
-      case Right(json) =>
-        decode[List[ExternalRate]](json.noSpaces) match {
-          case Right(responseList) if responseList.nonEmpty =>
-            val rate = parseExternalRateToRate(responseList.head)
-            logger.info(s"Successfully fetched rate: $rate")
-            rate.asRight[Error]
-
-          case Right(_) =>
-            logger.warn("Received empty response list for rate lookup.")
-            Error.OneFrameLookupFailed(500, "Empty response list").asLeft[Rate]
-
-          case Left(_) =>
-            decode[ErrorResponse](json.noSpaces) match {
-              case Right(errorResponse) =>
-                logger.error(s"External service error: ${errorResponse.error}")
-                Error.OneFrameLookupFailed(500, "External One Frame API encountered an issue").asLeft[Rate]
-
-              case Left(_) =>
-                logger.error(s"Unexpected response format: $json")
-                Error.OneFrameLookupFailed(500, "Unexpected response format from One Frame service").asLeft[Rate]
-            }
-        }
-
-      case Left(error: UnexpectedStatus) =>
-        logger.error(s"Unexpected HTTP status: ${error.status.code} - ${error.getMessage}", error)
-        Error.OneFrameLookupFailed(error.status.code, "Unexpected failure from One Frame service").asLeft[Rate]
-
-      case Left(error) =>
-        logger.error(s"Error during rate lookup: ${error.getMessage}", error)
-        Error.OneFrameLookupFailed(500, "Unexpected failure from one frame service").asLeft[Rate]
-    }
-    fetchRates.handleErrorWith { error =>
-      logger.error(s"Unexpected failure to fetch currency pairs: ${error.getMessage}", error)
-      Sync[F].pure(Error.OneFrameLookupFailed(503, "Unexpected failure from one frame service").asLeft[Rate])
-    }
-
-  }
 
   /**
    * Fetches the exchange rates for all supported currency pairs.
