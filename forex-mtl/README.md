@@ -72,6 +72,7 @@ The service supports Bearer authorization: "valid-token"
 |------------------------------------|------------------------------------------------|--------|
 | Get the currency pair USD, EUR     | hit the cache and return the rates             | v      |
 | Get the currency pair USD, USD     | return the rates which is one                  | v      |
+|Get the cureency pair USD, TWD | return 400 and Unknown currency: TWD | v      |
 | Get the currency if cache is miss  | generate cache miss log and return the rates   | v      |
 | Hit the api without the bearer token | return http code 401                           | v      |
 | Cron job updates the cache         | check the response timestamp will be different | v      |
@@ -104,14 +105,12 @@ While the current design is kept simple, additional features may be integrated b
 ### Running the Service
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/RyanLin82/proxy.git
 2. Docker compose
    ```bash
    #This will run the test so it takes a few minutes
+   #before docker-compose please make sure the path is under proxy/forex-mtl
    docker-compose up --build
 3. Try it !
    ```bash
    curl -H "Authorization: Bearer valid-token" -X GET "http://localhost:9000/rates?from=USD&to=EUR"
-   
-
- 
