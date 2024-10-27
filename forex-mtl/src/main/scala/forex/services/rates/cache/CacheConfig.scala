@@ -6,7 +6,7 @@ class CacheConfig {
   private val config: Config = ConfigFactory.load().getConfig("cache-service")
 
   object RatesCache {
-    val expireAfterWriteMinutes: Long = config.getConfig("rates-cache").getLong("expire-after-write-minutes")
+    val expireAfterWriteMilliseconds: Long = config.getConfig("rates-cache").getLong("expire-after-write-milliseconds")
     val maximumSize: Long = config.getConfig("rates-cache").getLong("maximum-size")
   }
 }

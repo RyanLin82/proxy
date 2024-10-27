@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 class CacheService[F[_]: Sync](cacheConfig: CacheConfig = CacheConfig()) extends LazyLogging {
 
   private val ratesCache: Cache[Pair, RateCacheValue] = Caffeine.newBuilder()
-    .expireAfterWrite(cacheConfig.RatesCache.expireAfterWriteMinutes, TimeUnit.MINUTES)
+    .expireAfterWrite(cacheConfig.RatesCache.expireAfterWriteMilliseconds, TimeUnit.MILLISECONDS)
     .maximumSize(cacheConfig.RatesCache.maximumSize)
     .build[Pair, RateCacheValue]()
 

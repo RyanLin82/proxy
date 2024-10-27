@@ -62,6 +62,26 @@ class ProgramSpec extends AnyFlatSpec with Matchers with MockitoSugar {
     result should be (Right(rate))
     verify(mockRatesService).allSupportedCurrenciesRateLookup()
     verify(mockCacheService).storeInRatesCache(List(rate))
+    verify(mockRatesService, times(0)).rateLookup(pair)
+  }
+
+  it should "call the rates service if allSupportedCurrenciesRateLookup is failed " in {
+    val mockRatesService = mock[RatesService[IO]]
+    val mockCacheService = mock[CacheService[IO]]
+    val pair = Rate.Pair(Currency.USD, Currency.EUR)
+    val rate = Rate(pair, Price(BigDecimal(1.1)), Timestamp.now)
+
+    when(mockCacheService.getRateFromCache(pair)).thenReturn(IO.pure(None))
+    when(mockRatesService.allSupportedCurrenciesRateLookup()).thenReturn(IO.pure(Left(mock[forex.services.rates.errors.Error])))
+    when(mockCacheService.storeInRatesCache(any[List[Rate]])).thenReturn(IO.unit)
+    when(mockRatesService.rateLookup(pair)).thenReturn(IO.pure(Right(rate)))
+
+    val program = new Program[IO](mockRatesService, mockCacheService)
+    val result = program.getRatePair(forex.programs.rates.Protocol.GetRatesRequest(Currency.USD, Currency.EUR)).unsafeRunSync()
+
+    result should be (Right(rate))
+    verify(mockRatesService).allSupportedCurrenciesRateLookup()
+    verify(mockCacheService, times(0)).storeInRatesCache(List(rate))
     verify(mockRatesService).rateLookup(pair)
   }
 

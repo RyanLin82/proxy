@@ -16,7 +16,7 @@ object Dependencies {
     val scalaCheck = "1.15.3"
     val scalaTest = "3.2.7"
     val catsScalaCheck = "0.3.2"
-    val mockito = "0.3.2"
+    val mockito = "1.17.37"
     val caffeine = "2.9.3"
     val cronJob = "0.7.0"
   }

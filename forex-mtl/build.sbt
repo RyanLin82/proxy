@@ -50,6 +50,8 @@ resolvers +=
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 assembly := (assembly dependsOn dependencyUpdates).value
+Compile / run / mainClass := Some("forex.Main")
+
 
 libraryDependencies ++= Seq(
   compilerPlugin(Libraries.kindProjector),

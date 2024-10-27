@@ -24,9 +24,9 @@ class Application[F[_]: ConcurrentEffect: Timer] extends LazyLogging{
   def stream(ec: ExecutionContext): Stream[F, Unit] = {
     for {
       config <- Config.stream("app")
-      client <- BlazeClientBuilder[F](ec).stream // Create the http4s client
+      client <- BlazeClientBuilder[F](ec).withRequestTimeout(config.client.timeout).stream
       cacheService = CacheService[F]()
-      module = new Module[F](config, client, cacheService) // Pass the client to the Module
+      module = new Module[F](config, client, cacheService)
       _ <- Stream.eval(runOnStartup(module.ratesProgram))
       _ <- BlazeServerBuilder[F](ec)
         .bindHttp(config.http.port, config.http.host)

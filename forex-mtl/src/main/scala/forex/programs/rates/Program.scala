@@ -9,6 +9,7 @@ import forex.domain._
 import forex.programs.rates.errors._
 import forex.services.RatesService
 import forex.services.rates.cache.CacheService
+import forex.services.rates.errors.Error.OneFrameLookupFailed
 
 class Program[F[_]: Sync](
     ratesService: RatesService[F],
@@ -27,11 +28,21 @@ class Program[F[_]: Sync](
         case None =>
           ratesService.allSupportedCurrenciesRateLookup().flatMap {
             case Right(rates) =>
-              cacheService.storeInRatesCache(rates).attempt.void
+              cacheService.storeInRatesCache(rates).handleErrorWith { e =>
+                logger.error("Failed to store rates in cache", e)
+                ().pure[F]
+              }.flatMap(
+                _ => {
+                  val result: Option[Rate] = rates.find(rate => rate.pair == pair)
+                  result match {
+                    case Some(rate) => rate.asRight[Error].pure[F]
+                    case None => toProgramError(OneFrameLookupFailed(500, "Given pair can't be found in external service")).asLeft[Rate].pure[F]
+                  }
+                }
+              )
+
             case Left(_) =>
-              ().pure[F]
-          }.flatMap { _ =>
-            EitherT(ratesService.rateLookup(pair)).leftMap(toProgramError).value
+              EitherT(ratesService.rateLookup(pair)).leftMap(toProgramError).value
           }
       }
     }
